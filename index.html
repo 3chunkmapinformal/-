@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>さんちゃんく！マップ(非公式）</title>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+
+<style>
+  body { margin:0; font-family:sans-serif; }
+  #map { width:100%; height:70vh; }
+  .tag-checkbox { margin:5px; }
+  #favorites {
+    padding:10px;
+    background:#f9f9f9;
+    height:20vh;
+    overflow-y:auto;
+    border-top:1px solid #ccc;
+  }
+  button { margin-top:5px; }
+</style>
+</head>
+<body>
+
+<h2>さんちゃんく！マップ(非公式）</h2>
+
+<div>
+  <label class="tag-checkbox">
+    <input type="checkbox" checked onchange="toggleLayer('雨栗',this.checked)">雨栗
+  </label>
+  <label class="tag-checkbox">
+    <input type="checkbox" checked onchange="toggleLayer('米将軍',this.checked)">米将軍
+  </label>
+  <label class="tag-checkbox">
+    <input type="checkbox" checked onchange="toggleLayer('水月ルザク',this.checked)">水月ルザク
+  </label>
+  <label class="tag-checkbox">
+    <input type="checkbox" checked onchange="toggleLayer('さんちゃんく！',this.checked)">さんちゃんく！
+  </label>
+</div>
+
+<div id="map"></div>
+
+<h3>お気に入りスポット</h3>
+<ul id="favoriteList"></ul>
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script>
+
+// =====================
+// 地図初期化
+// =====================
+const map = L.map("map").setView([35.6895,139.6917],13);
+
+L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{
+  attribution:"&copy; OpenStreetMap contributors"
+}).addTo(map);
+
+// =====================
+// スポットデータ
+// =====================
+const spots = [
+  {
+    name:"さんちゃんく！りあるしょっぷ",
+    lat:35.705544,
+    lng:139.722717,
+    desc:"東京都新宿区早稲田町12 シャンブール早稲田2階 さんちゃんく！初の常設店舗。営業日は公式Xを確認。",
+    tags:["さんちゃんく！","雨栗","米将軍","水月ルザク"]
+  },
+  {
+    name:"さんちゃんく！ポップアップストア in 池袋サンシャインシティアルタ",
+    lat:35.735374,
+    lng:139.712799,
+    desc:"東京都豊島区東池袋3-1-3 池袋サンシャインシティアルタ1F 2025年4月17日～4月23日開催。",
+    tags:["さんちゃんく！","雨栗","米将軍","水月ルザク"]
+  },
+  {
+    name:"RAKU CAFE 池袋1号店",
+    lat:35.729126,
+    lng:139.715439,
+    desc:"東京都豊島区東池袋1-23-5 オトメイトビル2F 2025年4月3日～4月23日開催。",
+    tags:["さんちゃんく！","雨栗","米将軍","水月ルザク"]
+  },
+  {
+    name:"RAKU CAFE 心斎橋1号店",
+    lat:34.672779,
+    lng:135.501892,
+    desc:"大阪府大阪市中央区心斎橋筋1-4-12 心斎橋日光ビル4F 2025年4月3日～4月23日開催。",
+    tags:["さんちゃんく！","雨栗","米将軍","水月ルザク"]
+  },
+  {
+    name:"舞浜駅",
+    lat:35.636112,
+    lng:139.884384,
+    desc:"千葉県浦安市舞浜26-5 「エンドラ討伐にかかった歩数分、現実で歩いてみた」という動画のスタート地点。",
+    tags:["さんちゃんく！","雨栗","米将軍","水月ルザク"]
+  },
+  {
+    name:"東京駅",
+    lat:35.681252,
+    lng:139.767242,
+    desc:"東京都千代田区丸の内1-9-1 「エンドラ討伐にかかった歩数分、現実で歩いてみた」という動画のゴール地点。",
+    tags:["さんちゃんく！","雨栗","米将軍","水月ルザク"]
+  },
+  {
+    name:"東京ディズニーリゾート・サインモニュメント",
+    lat:35.633501,
+    lng:139.878085,
+    desc:"千葉県浦安市舞浜29-1 「エンドラ討伐にかかった歩数分、現実で歩いてみた」の動画で3ショットを撮影した場所。",
+    tags:["さんちゃんく！","雨栗","米将軍","水月ルザク"]
+  },
+  {
+    name:"葛西臨海公園",
+    lat:35.642620,
+    lng:139.859528,
+    desc:"東京都江戸川区臨海町6丁目 「エンドラ討伐にかかった歩数分、現実で歩いてみた」という動画で訪れた場所。",
+    tags:["さんちゃんく！","雨栗","米将軍","水月ルザク"]
+  },
+  {
+    name:"さんちゃんく！カフェin東京",
+    lat:35.709118,
+    lng:139.782425,
+    desc:"東京都台東区元浅草1-20-3 2026年1月31日～2月1日開催。",
+    tags:["さんちゃんく！","雨栗","米将軍","水月ルザク"]
+  }
+];
+
+// =====================
+// レイヤー作成
+// =====================
+const layers = {};
+
+spots.forEach(spot => {
+  spot.tags.forEach(tag => {
+
+    if(!layers[tag]){
+      layers[tag] = L.layerGroup().addTo(map);
+    }
+
+    const marker = L.marker([spot.lat, spot.lng]).addTo(layers[tag]);
+
+    marker.bindPopup(`
+      <b>${spot.name}</b><br>
+      ${spot.desc}<br>
+      <button onclick="toggleFavorite('${spot.name}')">☆ お気に入り</button>
+    `);
+
+  });
+});
+
+// =====================
+// レイヤー切替
+// =====================
+function toggleLayer(tag, visible){
+  if(!layers[tag]) return;
+
+  if(visible){
+    layers[tag].addTo(map);
+  } else {
+    map.removeLayer(layers[tag]);
+  }
+}
+
+// =====================
+// お気に入り機能
+// =====================
+function toggleFavorite(name){
+  let favs = JSON.parse(localStorage.getItem("favorites") || "[]");
+
+  if(favs.includes(name)){
+    favs = favs.filter(x => x !== name);
+  } else {
+    favs.push(name);
+  }
+
+  localStorage.setItem("favorites", JSON.stringify(favs));
+  showFavorites();
+}
+
+function showFavorites(){
+  const favs = JSON.parse(localStorage.getItem("favorites") || "[]");
+  const list = document.getElementById("favoriteList");
+
+  list.innerHTML = "";
+
+  favs.forEach(name => {
+    const li = document.createElement("li");
+    li.textContent = name;
+    list.appendChild(li);
+  });
+}
+
+// 初期表示
+showFavorites();
+
+</script>
+</body>
+</html>
